@@ -3,54 +3,96 @@ pragma solidity ^0.8.28;
 
 import { IERC20 } from"./interfaces/IERC20.sol";
 import { Events } from "./lib/events.sol";
+import { Errors} from "./lib/errors.sol";
+
 
 contract TokenContract {
   
-    string tokenName;
-    string tokenSymbol;
-    uint256 decimals = 18;
+    string private tokenName;
+    string private tokenSymbol;
+    uint256 private decimals = 18;
 
+    uint256 private totalSupply; 
     mapping(address => uint256) balances;
     mapping (address => mapping(address => uint256)) allowances;
+
+    address public admin;
 
     constructor(string memory _tokenName, string memory _tokenSymbol) {
       tokenName = _tokenName;
       tokenSymbol = _tokenSymbol;
+      admin = msg.sender;
+      mint(address(this), 10 * decimals);
     }
 
+
     function balanceOf(address tokenHolder) external view returns (uint256) {
+      if (tokenHolder == address(0)){
+        revert Errors.invalidAccount(tokenHolder);
+      }
       uint256 balance = balances[tokenHolder];
       return balance;
     }
     
+
     function transfer(address recipient, uint256 amount) external {
-      require(recipient != address(0), "Invalid address zero detected");
-      require(amount > 0, "Amount must be greater than zero");
+      
+      if (recipient == address(0)){
+        revert Errors.invalidAccount(recipient);
+      }
+
+      
+      if (amount <=0){
+        revert Errors.invalidAmount(amount);
+      }
 
       uint256 balance = this.balanceOf(msg.sender);
 
-      require(balance >= amount, "Insufficient balance");
+     
+      if (balance < amount){
+        revert Errors.insufficientBalance();
+      }
 
       balances[msg.sender] -= amount;
       balances[recipient] += amount;
 
       emit Events.Transfer(msg.sender, recipient, amount);
     }
+
+
     function transferFrom(
         address owner,
         address spender,
         uint256 amount
     ) external returns(bool){
-      require(owner != address(0), "Invalid address zero");
-      require(spender != address(0), "Invalid address zero");
-      require(amount > 0, "Invalid amount");
+      
+       if (owner == address(0)){
+        revert Errors.invalidAccount(owner);
+      }
+
+      
+      if (spender == address(0)){
+        revert Errors.invalidSpenderAccount(spender);
+      }
+
+
+      
+      if (amount <=0){
+        revert Errors.invalidAmount(amount);
+      }
 
       uint256 spenderAllowance = allowances[owner][spender];
-      require(spenderAllowance >= amount, "Insufficient allowance");
+
+      
+      if(spenderAllowance < amount){
+        revert Errors.insufficientAllowance();
+      }
 
       uint256 ownerBalance = this.balanceOf(owner);
 
-      require(ownerBalance >= amount, "Insufficient owner balance");
+       if (ownerBalance < amount){
+        revert Errors.insufficientBalance();
+      }
 
       allowances[owner][spender] -= amount;
 
@@ -62,34 +104,63 @@ contract TokenContract {
       return true;
     }
 
+
     function allowance(
         address owner,
         address spender
     ) external view returns (uint256) {
-      require(owner != address(0), "Invalid address zero detected");
-      require(spender != address(0), "Invalid address zero detected");
+
+       if (owner == address(0)){
+        revert Errors.invalidAccount(owner);
+      }
+
+      
+      if (spender == address(0)){
+        revert Errors.invalidSpenderAccount(spender);
+      }
 
       uint256 spenderAllowance = allowances[owner][spender];
       return spenderAllowance;
     }
 
+
     function approve(address spender, uint256 amount) external {
-      require(spender != address(0), "Invalid address zero detected");
+
+      if (spender == address(0)){
+        revert Errors.invalidSpenderAccount(spender);
+      }
+      
       allowances[msg.sender][spender] += amount;
 
       emit Events.Approve(msg.sender, spender, amount);
     }
 
+
     function name() external view returns(string memory) {
       return tokenName;
     }
+
+
     function symbol() external view returns(string memory) {
       return tokenSymbol;
     }
 
-    function mint(address reciever, uint256 amount) external {
-      require(reciever != address(0), "Invalid address zero detected");
+      function totalSupplyOf() external view returns(uint) {
+      return totalSupply;
+    }
 
-      balances[reciever] += amount;
+    function mint(address reciever, uint256 amount) public {
+        if (reciever == address(0)) {
+            revert Errors.invalidAccount(reciever);
+        }
+
+        if (amount <=0){
+        revert Errors.invalidAmount(amount);
+      }
+
+        totalSupply += amount;
+        balances[reciever] += amount;
+
+        emit Events.Transfer(address(this), reciever, amount);
     }
 }

@@ -8,13 +8,13 @@ import { Errors} from "./lib/errors.sol";
 
 contract TokenContract {
   
-    string private tokenName;
-    string private tokenSymbol;
-    uint256 private decimals = 18;
+    string public tokenName;
+    string public tokenSymbol;
+    uint256 public decimals = 18;
 
-    uint256 private totalSupply; 
-    mapping(address => uint256) balances;
-    mapping (address => mapping(address => uint256)) allowances;
+    uint256 public totalSupply; 
+    mapping(address => uint256) private balances;
+    mapping (address => mapping(address => uint256)) private allowances;
 
     address public admin;
 
@@ -25,6 +25,12 @@ contract TokenContract {
       mint(address(this), 10 * decimals);
     }
 
+    modifier onlyAdmin() {
+      if(msg.sender != admin){
+        revert Errors.notAdmin();
+      }
+      _;
+    }
 
     function balanceOf(address tokenHolder) external view returns (uint256) {
       if (tokenHolder == address(0)){
@@ -62,7 +68,7 @@ contract TokenContract {
 
     function transferFrom(
         address owner,
-        address spender,
+        address receipient,
         uint256 amount
     ) external returns(bool){
       
@@ -71,8 +77,8 @@ contract TokenContract {
       }
 
       
-      if (spender == address(0)){
-        revert Errors.invalidSpenderAccount(spender);
+      if (receipient == address(0)){
+        revert Errors.invalidreceipientAccount(receipient);
       }
 
 
@@ -81,7 +87,7 @@ contract TokenContract {
         revert Errors.invalidAmount(amount);
       }
 
-      uint256 spenderAllowance = allowances[owner][spender];
+      uint256 spenderAllowance = allowances[owner][msg.sender];
 
       
       if(spenderAllowance < amount){
@@ -94,12 +100,12 @@ contract TokenContract {
         revert Errors.insufficientBalance();
       }
 
-      allowances[owner][spender] -= amount;
+      allowances[owner][msg.sender] -= amount;
 
       balances[owner] -= amount;
-      balances[spender] += amount;
+      balances[receipient] += amount;
 
-      emit Events.TransferFrom(owner, spender, amount);
+      emit Events.TransferFrom(owner, receipient, amount);
 
       return true;
     }

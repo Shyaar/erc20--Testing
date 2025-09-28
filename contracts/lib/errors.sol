@@ -5,7 +5,10 @@ library Errors{
     error invalidAccount(address _address);
     error invalidSpenderAccount(address _address);
     error invalidAmount(uint256 _amount);
+    error invalidreceipientAccount(address _receipient);
 
     error insufficientBalance();
     error insufficientAllowance();
+
+    error notAdmin();
 }
